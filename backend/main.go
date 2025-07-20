@@ -4,38 +4,49 @@ import (
     "context"
     "log"
 
-    "github.com/gin-contrib/cors"
     "github.com/gin-gonic/gin"
+    "github.com/redis/go-redis/v9"
     "go.mongodb.org/mongo-driver/mongo"
     "go.mongodb.org/mongo-driver/mongo/options"
 
     "github.com/HoangDinhBui/online-quiz-platform/backend/handlers"
-    "time"
+    "os"
 )
 
 func main() {
     // Kết nối MongoDB
-    client, err := mongo.Connect(context.Background(), options.Client().ApplyURI("mongodb://localhost:27017"))
+    client, err := mongo.Connect(context.Background(), options.Client().ApplyURI("mongodb://mongodb:27017"))
     if err != nil {
         log.Fatal(err)
     }
     db := client.Database("quiz_platform")
 
+    // Kết nối Redis
+    redisClient := redis.NewClient(&redis.Options{
+        Addr: os.Getenv("REDIS_URL"),
+    })
+    if _, err := redisClient.Ping(context.Background()).Result(); err != nil {
+        log.Fatal(err)
+    }
+
     // Khởi tạo router Gin
     r := gin.Default()
 
-    // Thêm cấu hình CORS
-    r.Use(cors.New(cors.Config{
-        AllowOrigins:     []string{"http://localhost:5173"},
-        AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-        AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
-        AllowCredentials: true,
-        MaxAge:           12 * time.Hour,
-    }))
+    // Thêm middleware CORS
+    r.Use(func(c *gin.Context) {
+        c.Writer.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
+        c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+        if c.Request.Method == "OPTIONS" {
+            c.AbortWithStatus(204)
+            return
+        }
+        c.Next()
+    })
 
     // Khởi tạo handlers
-    classHandler := handlers.NewClassHandler(db)
-    questionHandler := handlers.NewQuestionHandler(db)
+    classHandler := handlers.NewClassHandler(db, redisClient)
+    questionHandler := handlers.NewQuestionHandler(db, redisClient)
     resultHandler := handlers.NewResultHandler(db)
 
     // Định nghĩa API

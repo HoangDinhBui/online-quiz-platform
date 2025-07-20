@@ -5,8 +5,8 @@ const ClassSelector = ({ onSelectClass }) => {
   const [classes, setClasses] = useState([]);
 
   useEffect(() => {
-    axios
-      .get("http://localhost:8080/classes")
+    axios.axios
+      .get("http://localhost/api/classes")
       .then((response) => setClasses(response.data))
       .catch((error) => console.error(error));
   }, []);

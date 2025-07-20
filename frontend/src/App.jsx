@@ -15,8 +15,8 @@ const App = () => {
 
   const handleSubmit = (answers) => {
     axios
-      .post("http://localhost:8080/submit", {
-        user_id: "user123", // Giả định user_id tạm
+      .post("http://localhost/api/submit", {
+        user_id: "user123",
         class_id: classId,
         answers,
       })

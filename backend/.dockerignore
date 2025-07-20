@@ -1,0 +1,21 @@
+# Ignore VCS
+.git
+.gitignore
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Binary output
+main
+*.exe
+*.out
+
+# Dependency cache (optional)
+vendor/
+
+# Env files
+.env
+
+# Node folders
+node_modules

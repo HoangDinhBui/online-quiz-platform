@@ -7,8 +7,9 @@ const QuestionList = ({ classId, onSubmit }) => {
 
   useEffect(() => {
     if (classId) {
+      axios;
       axios
-        .get(`http://localhost:8080/questions?class_id=${classId}`)
+        .get(`http://localhost/api/questions?class_id=${classId}`)
         .then((response) => setQuestions(response.data))
         .catch((error) => console.error(error));
     }
