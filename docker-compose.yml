@@ -1,6 +1,7 @@
 version: "3"
 services:
   mongodb:
+    container_name: mongodb
     image: mongo:7.0
     ports:
       - "27017:27017"
@@ -13,6 +14,7 @@ services:
     volumes:
       - redis_data:/data
   backend:
+    container_name: backend
     build: ./backend
     ports:
       - "8080:8080"
@@ -22,6 +24,7 @@ services:
     environment:
       - REDIS_URL=redis:6379
   backend2:
+    container_name: backend2
     build: ./backend
     ports:
       - "8081:8080"
@@ -31,23 +34,38 @@ services:
     environment:
       - REDIS_URL=redis:6379
   frontend:
+    container_name: frontend
     build:
       context: ./frontend
     ports:
       - "5173:5173"
     working_dir: /app
     volumes:
-      - ./frontend:/app
+      # - ./frontend:/app
+      - /app/node_modules
     command: npm run dev
   nginx:
+    container_name: nginx
     image: nginx:1.21
     ports:
-      - "80:80"
+      - "8000:80"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf
     depends_on:
       - backend
       - frontend
+  prometheus:
+    container_name: prometheus
+    image: prom/prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+  grafana:
+    container_name: grafana
+    image: grafana/grafana
+    ports:
+      - "3001:3000"
 volumes:
   mongodb_data:
   redis_data:

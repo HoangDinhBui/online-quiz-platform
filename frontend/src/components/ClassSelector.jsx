@@ -1,31 +1,40 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
+import { FormControl, InputLabel, Select, MenuItem } from "@mui/material";
 
 const ClassSelector = ({ onSelectClass }) => {
   const [classes, setClasses] = useState([]);
+  const [selectedClass, setSelectedClass] = useState("");
 
   useEffect(() => {
-    axios.axios
-      .get("http://localhost/api/classes")
+    axios
+      .get("/api/classes")
       .then((response) => setClasses(response.data))
-      .catch((error) => console.error(error));
+      .catch((error) => {
+        console.error("Lỗi gọi API /api/classes:", error);
+        setClasses([]); // fallback để tránh lỗi .map nếu response null
+      });
   }, []);
 
+  const handleChange = (event) => {
+    const value = event.target.value;
+    setSelectedClass(value);
+    onSelectClass?.(value);
+  };
+
   return (
-    <div className="p-4">
-      <h2 className="text-2xl font-bold mb-4">Chọn lớp</h2>
-      <select
-        onChange={(e) => onSelectClass(e.target.value)}
-        className="p-2 border rounded w-full md:w-64"
-      >
-        <option value="">Chọn lớp</option>
-        {classes.map((cls) => (
-          <option key={cls.class_id} value={cls.class_id}>
-            {cls.Name}
-          </option>
-        ))}
-      </select>
-    </div>
+    <FormControl fullWidth>
+      <InputLabel>Chọn lớp</InputLabel>
+      <Select value={selectedClass} label="Chọn lớp" onChange={handleChange}>
+        <MenuItem value="">Chọn lớp</MenuItem>
+        {Array.isArray(classes) &&
+          classes.map((cls) => (
+            <MenuItem key={cls.class_id} value={cls.class_id}>
+              {cls.name}
+            </MenuItem>
+          ))}
+      </Select>
+    </FormControl>
   );
 };
 

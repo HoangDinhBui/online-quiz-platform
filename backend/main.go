@@ -8,10 +8,34 @@ import (
     "github.com/redis/go-redis/v9"
     "go.mongodb.org/mongo-driver/mongo"
     "go.mongodb.org/mongo-driver/mongo/options"
-
+    "github.com/gorilla/websocket"
+    "github.com/prometheus/client_golang/prometheus/promhttp"
+    "net/http"
     "github.com/HoangDinhBui/online-quiz-platform/backend/handlers"
     "os"
 )
+
+var upgrader = websocket.Upgrader{
+    CheckOrigin: func(r *http.Request) bool { return true },
+}
+
+func handleWebSocket(c *gin.Context) {
+    conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+    if err != nil {
+        log.Println(err)
+        return
+    }
+    defer conn.Close()
+
+    for {
+        _, msg, err := conn.ReadMessage()
+        if err != nil {
+            log.Println(err)
+            return
+        }
+        conn.WriteMessage(websocket.TextMessage, msg)
+    }
+}
 
 func main() {
     // Kết nối MongoDB
@@ -19,7 +43,7 @@ func main() {
     if err != nil {
         log.Fatal(err)
     }
-    db := client.Database("quiz_platform")
+    db := client.Database("online-quiz-platform")
 
     // Kết nối Redis
     redisClient := redis.NewClient(&redis.Options{
@@ -34,7 +58,7 @@ func main() {
 
     // Thêm middleware CORS
     r.Use(func(c *gin.Context) {
-        c.Writer.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
+        c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
         c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type")
         if c.Request.Method == "OPTIONS" {
@@ -53,6 +77,9 @@ func main() {
     r.GET("/classes", classHandler.GetClasses)
     r.GET("/questions", questionHandler.GetQuestions)
     r.POST("/submit", resultHandler.SubmitAnswers)
+    r.GET("/generate-user-id", resultHandler.GenerateUserID)
+    r.GET("/ws", handleWebSocket)
+    r.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
     // Chạy server
     if err := r.Run(":8080"); err != nil {

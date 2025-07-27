@@ -1,6 +1,7 @@
 package handlers
 
    import (
+    "strconv"
        "context"
        "encoding/json"
        "github.com/gin-gonic/gin"
@@ -24,37 +25,43 @@ package handlers
    }
 
    func (h *QuestionHandler) GetQuestions(c *gin.Context) {
-       classID := c.Query("class_id")
-       cacheKey := "questions:" + classID
-       ctx := context.Background()
+    classIDStr := c.Query("class_id")
+    classID, err := strconv.Atoi(classIDStr)
+    if err != nil {
+        c.JSON(400, gin.H{"error": "Invalid class_id"})
+        return
+    }
 
-       // Thử lấy từ Redis
-       questionsData, err := h.redisClient.Get(ctx, cacheKey).Result()
-       if err == redis.Nil {
-           // Nếu không có trong Redis, lấy từ MongoDB
-           cursor, err := h.collection.Find(ctx, bson.M{"class_id": classID})
-           if err != nil {
-               c.JSON(500, gin.H{"error": err.Error()})
-               return
-           }
-           var questions []models.Question
-           if err := cursor.All(ctx, &questions); err != nil {
-               c.JSON(500, gin.H{"error": err.Error()})
-               return
-           }
+    cacheKey := "questions:" + classIDStr
+    ctx := context.Background()
 
-           // Lưu vào Redis với TTL 1 giờ
-           questionsBytes, _ := json.Marshal(questions)
-           h.redisClient.Set(ctx, cacheKey, questionsBytes, time.Hour)
-           c.JSON(200, questions)
-           return
-       } else if err != nil {
-           c.JSON(500, gin.H{"error": err.Error()})
-           return
-       }
+    // Thử lấy từ Redis
+    questionsData, err := h.redisClient.Get(ctx, cacheKey).Result()
+    if err == redis.Nil {
+        // Nếu không có trong Redis, lấy từ MongoDB
+        cursor, err := h.collection.Find(ctx, bson.M{"class_id": classID}) // ĐÃ FIX: dùng int
+        if err != nil {
+            c.JSON(500, gin.H{"error": err.Error()})
+            return
+        }
+        var questions []models.Question
+        if err := cursor.All(ctx, &questions); err != nil {
+            c.JSON(500, gin.H{"error": err.Error()})
+            return
+        }
 
-       // Trả dữ liệu từ Redis
-       var questions []models.Question
-       json.Unmarshal([]byte(questionsData), &questions)
-       c.JSON(200, questions)
-   }
+        // Lưu vào Redis với TTL 1 giờ
+        questionsBytes, _ := json.Marshal(questions)
+        h.redisClient.Set(ctx, cacheKey, questionsBytes, time.Hour)
+        c.JSON(200, questions)
+        return
+    } else if err != nil {
+        c.JSON(500, gin.H{"error": err.Error()})
+        return
+    }
+
+    // Trả dữ liệu từ Redis
+    var questions []models.Question
+    json.Unmarshal([]byte(questionsData), &questions)
+    c.JSON(200, questions)
+}

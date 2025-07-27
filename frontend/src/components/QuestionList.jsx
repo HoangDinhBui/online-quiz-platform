@@ -9,7 +9,7 @@ const QuestionList = ({ classId, onSubmit }) => {
     if (classId) {
       axios;
       axios
-        .get(`http://localhost/api/questions?class_id=${classId}`)
+        .get(`/api/questions?class_id=${classId}`)
         .then((response) => setQuestions(response.data))
         .catch((error) => console.error(error));
     }

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+    "fmt"
     "context"
     "encoding/json"
     "github.com/gin-gonic/gin"
@@ -25,10 +26,14 @@ func NewClassHandler(db *mongo.Database, redisClient *redis.Client) *ClassHandle
 
 func (h *ClassHandler) GetClasses(c *gin.Context) {
        ctx := context.Background()
+        fmt.Println("→ Đang gọi GetClasses")
 
        // Thử lấy từ Redis
        classesData, err := h.redisClient.Get(ctx, "classes").Result()
        if err == redis.Nil {
+        fmt.Println("→ Không có cache, đang lấy từ MongoDB")
+fmt.Println("→ Dữ liệu Mongo:")
+
            // Nếu không có trong Redis, lấy từ MongoDB
            cursor, err := h.collection.Find(ctx, bson.M{})
            if err != nil {

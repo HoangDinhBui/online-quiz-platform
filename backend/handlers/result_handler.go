@@ -3,6 +3,7 @@ package handlers
 import (
     "context"
     "github.com/gin-gonic/gin"
+    "github.com/google/uuid"
     "go.mongodb.org/mongo-driver/bson"
     "go.mongodb.org/mongo-driver/mongo"
     "github.com/HoangDinhBui/online-quiz-platform/backend/models"
@@ -17,20 +18,28 @@ func NewResultHandler(db *mongo.Database) *ResultHandler {
     return &ResultHandler{collection: db.Collection("results")}
 }
 
+func (h *ResultHandler) GenerateUserID(c *gin.Context) {
+    userID := uuid.New().String()
+    ctx := context.Background()
+    h.collection.Database().Client().Database("quiz_platform").Collection("sessions").
+        InsertOne(ctx, bson.M{"user_id": userID, "created_at": time.Now()})
+    c.JSON(200, gin.H{"user_id": userID})
+}
+
 func (h *ResultHandler) SubmitAnswers(c *gin.Context) {
     var submission struct {
-        UserID   string            `json:"user_id"`
-        ClassID  string            `json:"class_id"`
-        Answers  map[string]string `json:"answers"` // question_id: answer
+        UserID  string            `json:"user_id"`
+        ClassID int            `json:"class_id"`
+        Answers map[int]string `json:"answers"`
     }
     if err := c.ShouldBindJSON(&submission); err != nil {
         c.JSON(400, gin.H{"error": err.Error()})
         return
     }
 
-    // Giả sử chấm điểm bằng cách so sánh với correct_answer trong DB
+    ctx := context.Background()
     questionsCursor, err := h.collection.Database().Collection("questions").Find(
-        context.Background(),
+        ctx,
         bson.M{"class_id": submission.ClassID},
     )
     if err != nil {
@@ -38,7 +47,7 @@ func (h *ResultHandler) SubmitAnswers(c *gin.Context) {
         return
     }
     var questions []models.Question
-    if err := questionsCursor.All(context.Background(), &questions); err != nil {
+    if err := questionsCursor.All(ctx, &questions); err != nil {
         c.JSON(500, gin.H{"error": err.Error()})
         return
     }
@@ -46,18 +55,17 @@ func (h *ResultHandler) SubmitAnswers(c *gin.Context) {
     score := 0
     for _, q := range questions {
         if submission.Answers[q.QuestionID] == q.CorrectAnswer {
-            score += 10 // 10 điểm mỗi câu
+            score += 10
         }
     }
 
-    // Lưu kết quả
     result := models.Result{
         UserID:    submission.UserID,
         ClassID:   submission.ClassID,
         Score:     score,
         Timestamp: time.Now().String(),
     }
-    _, err = h.collection.InsertOne(context.Background(), result)
+    _, err = h.collection.InsertOne(ctx, result)
     if err != nil {
         c.JSON(500, gin.H{"error": err.Error()})
         return
