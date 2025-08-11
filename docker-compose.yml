@@ -66,6 +66,12 @@ services:
     image: grafana/grafana
     ports:
       - "3001:3000"
+  k6:
+    image: grafana/k6
+    container_name: k6
+    volumes:
+      - ./k6-scripts:/scripts
+    command: run /scripts/test.js
 volumes:
   mongodb_data:
   redis_data:
